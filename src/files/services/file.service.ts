@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IBlobConfig } from 'config/interface';
 import { CdnUploadService } from 'src/shared/services/cdn-upload.service';
+import { LlmImageOptimizationService } from '../../shared/services/llm-image-optimization.service';
 
 import { randomUUID } from 'crypto';
 import { CustomPinoLogger } from 'src/logger/custom-logger.service';
@@ -17,7 +18,8 @@ export class FilesAzureService {
   constructor(
     private readonly configService: ConfigService,
     private readonly cdnUploadService: CdnUploadService,
-    private readonly logger: CustomPinoLogger
+    private readonly logger: CustomPinoLogger,
+    private readonly llmImageOptimizationService: LlmImageOptimizationService
   ) {
     const { BLOB_CONNECTION_STRING, BLOB_CONTAINER_NAME, BLOB_URL, BLOB_SAS_TOKEN } =
       this.configService.get<IBlobConfig>('blob');
@@ -50,6 +52,9 @@ export class FilesAzureService {
     try {
       const extension = file.originalname.split('.').pop();
       const file_name = randomUUID() + '.' + extension;
+
+      file.buffer = await this.llmImageOptimizationService.process(file.buffer);
+
       const blockBlobClient = await this.getBlobClient(file_name);
       await blockBlobClient.uploadData(file.buffer);
 

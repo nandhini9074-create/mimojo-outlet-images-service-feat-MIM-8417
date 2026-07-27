@@ -155,6 +155,10 @@ export class EnvironmentVariables implements IAppConfig, ICredentialsConfig, IDa
   @IsNotEmpty()
   @IsString()
   AUDIT_LOG_NODE_HERO_IMAGE: string;
+
+  @IsNotEmpty()
+  @IsString()
+  GEMINI_API_KEY: string;
 }
 
 export function validate(config: Record<string, unknown>) {

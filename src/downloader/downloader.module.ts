@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LlmModule } from '../shared/module/llm.module';
 import { ConfigModule } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { googleConfig, kafkaConsumerConfig } from 'config/server.config';
@@ -58,6 +59,7 @@ import { KafkaProducerService } from 'src/kafka-producer/kafka-producer.service'
     ]),
     CustomLoggerModule,
     HttpModule,
+    LlmModule,
   ],
   exports: [
     OutletPhotoService,

@@ -60,3 +60,7 @@ export interface IGrafanaConfig {
   OTEL_EXPORTER_OTLP_ENDPOINT: string;
   SERVICE_NAME: string;
 }
+
+export interface ILLMConfig {
+  GEMINI_API_KEY: string;
+}

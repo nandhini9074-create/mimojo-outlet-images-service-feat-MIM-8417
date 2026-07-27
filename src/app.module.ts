@@ -9,6 +9,7 @@ import {
   grafanaCredentials,
   googleConfig,
   kafkaConsumerConfig,
+  llmConfig,
 } from '../config/server.config';
 import { validate } from 'env.validation';
 import { SequelizeModule } from '@nestjs/sequelize';
@@ -22,11 +23,12 @@ import { FileModule } from './files/file.module';
 import { LoggerModule, PinoLogger } from 'nestjs-pino';
 import { PINO_LOGGER_OPTIONS_TOKEN, PinoLoggerInterceptor } from './logger/logger.interceptor';
 import { CustomLoggerModule } from './logger/logger.module';
+import { LlmModule } from './shared/module/llm.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [appConfig, databaseConfig, kafkaConsumerConfig, googleConfig, blobConfig, cdnConfig, grafanaCredentials],
+      load: [appConfig, databaseConfig, kafkaConsumerConfig, googleConfig, blobConfig, cdnConfig, grafanaCredentials, llmConfig],
       cache: true,
       isGlobal: true,
       validate,
@@ -42,6 +44,7 @@ import { CustomLoggerModule } from './logger/logger.module';
     FileModule,
     LoggerModule.forRoot(),
     CustomLoggerModule,
+    LlmModule,
   ],
   providers: [
     AppService,

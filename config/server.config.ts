@@ -10,6 +10,7 @@ import {
   IGoogleConfig,
   IKafkaConsumerConfig,
   IGrafanaConfig,
+  ILLMConfig,
 } from './interface';
 import { Dialect } from 'sequelize/types';
 
@@ -91,5 +92,12 @@ export const grafanaCredentials = registerAs(
   (): IGrafanaConfig => ({
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env[EnvKeysEnum.OTEL_EXPORTER_OTLP_ENDPOINT] ?? '',
     SERVICE_NAME: process.env[EnvKeysEnum.SERVICE_NAME] ?? '',
+  })
+);
+
+export const llmConfig = registerAs(
+  'llm',
+  (): ILLMConfig => ({
+    GEMINI_API_KEY: process.env[EnvKeysEnum.GEMINI_API_KEY] as string,
   })
 );

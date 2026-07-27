@@ -23,8 +23,11 @@ import { MerchantProfilePhotoService } from './merchant-profile-photo.service';
 import { OutletProfileMetadataService } from './outlet-profile-metadata.service';
 import { OutletProfilePhotoService } from './outlet-profile-photos.service';
 import { CdnUploadService } from 'src/shared/services/cdn-upload.service';
-import { EnvKeysEnum } from 'config/env.enum';
+import { MerchantProfileMetadataService } from './merchant-profile-metadata.service';
 import { DataOperationsProducer } from 'src/kafka-service/data-operations.producer';
+import { LlmImageOptimizationService } from '../../shared/services/llm-image-optimization.service';
+import { EnvKeysEnum } from 'config/env.enum';
+
 const axios = require('axios');
 
 @Injectable()
@@ -42,7 +45,9 @@ export class DownloaderService {
     @InjectModel(MerchantProfileMetadata) private readonly merchantProfileModel: typeof MerchantProfileMetadata,
     @InjectModel(OutletProfileMetadata) private readonly outletProfileModel: typeof OutletProfileMetadata,
     private readonly outletProfileMetadataService: OutletProfileMetadataService,
-    private readonly dataOperationsProducer: DataOperationsProducer
+    private readonly merchantProfileMetadataService: MerchantProfileMetadataService,
+    private readonly dataOperationsProducer: DataOperationsProducer,
+    private readonly llmImageOptimizationService: LlmImageOptimizationService
   ) {
     this.googleConfig = this.configService.get('google');
     this.blobConfig = this.configService.get('blob');
@@ -84,9 +89,17 @@ export class DownloaderService {
         const fileName = `${id}${fileType}`;
         console.log('Blob Filename:', fileName);
 
-        //Uploading to Blob
+        // 1. Download the image into memory as a buffer
+        const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        let imageBuffer = Buffer.from(imageResponse.data);
+
+        // 2. Call your LLM photo resize function here
+        imageBuffer = await this.llmImageOptimizationService.process(imageBuffer, 'google-poi');
+
+        // 3. Upload the resized buffer to Blob Storage
         const blobClient = this.getBlobClient(fileName);
-        await blobClient.syncUploadFromURL(imageUrl);
+        await blobClient.uploadData(imageBuffer);
+        
         //Uploading to cdn
         const cdnResponse = await this.cdnUploadService.uploadToCdn(
           `${this.blobConfig.BLOB_URL}/${fileName}?${this.blobConfig.BLOB_SAS_TOKEN}`
@@ -140,6 +153,8 @@ export class DownloaderService {
       if (dto?.setAsHeroImage?.toString() == 'true') {
         await this.merchantProfilePhotoService.deselectDefaultImage(dto.merchantProfileId);
       }
+      
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'merchant-profile');
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {
@@ -168,6 +183,8 @@ export class DownloaderService {
       if (dto?.setAsHeroImage?.toString() == 'true') {
         await this.merchantPhotoService.deselectDefaultImage(dto.merchantId);
       }
+      
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'merchant-image');
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {
@@ -194,6 +211,8 @@ export class DownloaderService {
       if (dto?.setAsHeroImage?.toString() == 'true') {
         await this.outletProfilePhotoService.deselectDefaultImage(dto.outletProfileId);
       }
+      
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'outlet-profile');
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {
