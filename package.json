@@ -1,0 +1,142 @@
+{
+  "name": "mimojo-outlet-images-service",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/src/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@azure/storage-blob": "^12.31.0",
+    "@nestjs/axios": "^4.0.1",
+    "@nestjs/common": "^11.1.16",
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/core": "^11.1.16",
+    "@nestjs/microservices": "^11.1.16",
+    "@nestjs/platform-express": "^11.1.16",
+    "@nestjs/sequelize": "^11.0.1",
+    "@nestjs/swagger": "^11.2.6",
+    "@types/sequelize": "^4.28.20",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.67.2",
+    "@opentelemetry/exporter-logs-otlp-grpc": "^0.208.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.208.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.208.0",
+    "@opentelemetry/instrumentation-pino": "^0.55.0",
+    "@opentelemetry/resources": "^2.6.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "axios": "^1.13.6",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "dotenv": "^17.3.1",
+    "decode-uri-component": "^0.4.1",
+    "Eslint": "npm:eslint@^9.39.1",
+    "file-type": "^20.5.0",
+    "helmet": "^8.1.0",
+    "http-cache-semantics": "^4.2.0",
+    "kafkajs": "^2.2.4",
+    "nestjs-pino": "^4.6.0",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "pino-http": "^10.5.0",
+    "Prettier": "npm:prettier@^3.8.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.5",
+    "sequelize-typescript": "^2.1.6",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "@nestjs/cli": "^11.0.16",
+    "@nestjs/schematics": "^11.0.9",
+    "@nestjs/testing": "^11.1.16",
+    "@types/express": "^5.0.6",
+    "@types/jest": "29.5.14",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^24.10.12",
+    "@types/supertest": "^6.0.3",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "conventional-changelog-atom": "^5.1.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "jest": "29.7.0",
+    "lint-staged": "^16.3.2",
+    "prettier": "^3.8.1",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.2.2",
+    "ts-jest": "29.4.6",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=10"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.service.ts",
+      "**/*.controller.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/dist/",
+      "<rootDir>/src/seeder/",
+      "http/",
+      "kafka/",
+      ".*\\.dto\\.ts",
+      ".*\\.entity\\.ts",
+      "main.ts",
+      "app.module.ts",
+      "kafka-consumer",
+      "kafka-producer",
+      "app.controller.ts",
+      "app.service.ts",
+      "logger/"
+    ],
+    "moduleNameMapper": {
+      "^config/(.*)$": "<rootDir>/../config/$1",
+      "^src/(.*)$": "<rootDir>/$1",
+      "^helper/(.*)$": "<rootDir>/../helper/$1"
+    },
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,106 @@
+# GitHub Actions workflow to enforce that only approved users can approve PRs
+# targeting stage/staging branches. Different branches can have different approvers.
+#
+# This approach AVOIDS using CODEOWNERS (which would get merged across branches).
+# The workflow is pushed to all branches EXCEPT main/master to avoid triggering
+# production pipelines. Main branch enforcement will be added in a future release.
+#
+# Place this file in .github/workflows/enforce-pr-approvers.yml in each repo.
+# Then add "Validate PR Approvers" as a REQUIRED STATUS CHECK in branch protection.
+
+name: Enforce PR Approvers
+
+on:
+  pull_request_review:
+    types: [ submitted ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches:
+    - 'stag*'
+
+permissions:
+  pull-requests: read
+
+jobs:
+  check-approvers:
+    name: Validate PR Approvers
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check approved reviewers
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          // ============================================================
+          // APPROVER CONFIGURATION - UPDATE WITH ACTUAL GITHUB USERNAMES
+          // ============================================================
+          // Define approved reviewers PER BRANCH.
+          // Only approvals from listed users will satisfy the check.
+          // Stage approvers - applies to any branch matching stag* (stage, staging, stagging, etc.)
+          const STAGE_APPROVERS = [
+            'kunal9002',
+            'karun250',
+            'Iswarya-B-QA',
+            'anoopmimojo',
+            'IndiraniIdeal',
+            'naufalShams',
+            'iamattiq',
+            'tahazahir13',
+            'Athramrizvi'
+          ];
+
+          // Main/Master branch approvers (for future release)
+          const MAIN_APPROVERS = [
+            'iamattiq',
+            'tahazahir13',
+            'Athramrizvi'
+          ];
+          // ============================================================
+
+          const targetBranch = context.payload.pull_request.base.ref;
+
+          // Match approvers based on branch pattern
+          let approvers;
+          if (targetBranch.startsWith('stag')) {
+            approvers = STAGE_APPROVERS;
+          } else if (targetBranch === 'main' || targetBranch === 'master') {
+            approvers = MAIN_APPROVERS;
+          } else {
+            approvers = null;
+          }
+
+          // If branch is not in the config, skip enforcement
+          if (!approvers) {
+            core.info(`ℹ️ No approver restriction configured for branch '${targetBranch}' - skipping`);
+            return;
+          }
+
+          const normalizedApprovers = approvers.map(u => u.toLowerCase());
+
+          const { data: reviews } = await github.rest.pulls.listReviews({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.payload.pull_request.number
+          });
+
+          // Get the latest review state per user
+          const latestReviews = {};
+          for (const review of reviews) {
+            latestReviews[review.user.login.toLowerCase()] = review.state;
+          }
+
+          // Check if any authorized reviewer has approved
+          const approvedByAuthorized = Object.entries(latestReviews)
+            .filter(([user, state]) => state === 'APPROVED' && normalizedApprovers.includes(user));
+
+          if (approvedByAuthorized.length === 0) {
+            const reviewerList = normalizedApprovers.map(u => `@${u}`).join(', ');
+            core.setFailed(
+              `❌ This PR targets '${targetBranch}' and requires approval from an authorized reviewer.\n` +
+              `Authorized reviewers for '${targetBranch}': ${reviewerList}\n` +
+              `None of the authorized reviewers have approved this PR yet.`
+            );
+          } else {
+            const names = approvedByAuthorized.map(([user]) => `@${user}`).join(', ');
+            core.info(`✅ PR approved by authorized reviewer(s): ${names}`);
+          }

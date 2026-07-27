@@ -1,0 +1,58 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  labels:
+    tags.datadoghq.com/env: "ENVIRONMENT" # Unified service tag - Deployment Env tag
+    tags.datadoghq.com/service: "DEPLOYMENT_NAME" # Unified service tag - Deployment Service tag
+    tags.datadoghq.com/version: "1.1" # Unified service tag - Deployment Version tag
+  name: DEPLOYMENT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: DEPLOYMENT_NAME
+  template:
+    metadata:
+      annotations:
+        admission.datadoghq.com/js-lib.version: v4.2.0
+        ad.datadoghq.com/DEPLOYMENT_NAME.logs: '[{"source": nodejs","service": "DEPLOYMENT_NAME"}]'
+      labels:
+        app: DEPLOYMENT_NAME
+        admission.datadoghq.com/enabled: "true"
+        clusterAgent.admissionController.mutateUnlabelled: "true"
+        admission.datadoghq.com/config.mode: "socket"
+        tags.datadoghq.com/env: "ENVIRONMENT" 
+        tags.datadoghq.com/service: "DEPLOYMENT_NAME" 
+        tags.datadoghq.com/version: "1.1"
+    spec:
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        nameservers:
+          - 8.8.8.8
+        searches:
+          - NAMESPACE.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+          - DNS_SEARCH
+        options:
+          - name: ndots
+            value: "5"
+          - name: timeout
+            value: "2"
+      containers:
+        - name: DEPLOYMENT_NAME 
+          image: AZURERCONTAINERREGISTRY.azurecr.io/mimojo/IMAGE_NAME:latest
+          resources:
+            limits:
+              cpu: '200m'
+              memory: 512Mi
+            requests:
+              cpu: '50m'
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: ENV_SECRETS

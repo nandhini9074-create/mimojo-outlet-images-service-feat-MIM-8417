@@ -1,0 +1,203 @@
+stages:
+  - pre
+  - build
+  - test
+  - deploy
+  - deploy_dev
+  - deploy_stage
+  - deploy_prod
+
+before_script:
+  - if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
+      export TOKEN="$ACR_TOKEN_PROD";
+      export ACR="mimojoprod";
+      export USER="mimojoprod";
+      export ENV="prod";
+      export NAMESPACE="mojo-prod";
+      export CONTEXT="mimojo/g4ak-prod1:k8-agent-prod";
+      export CONTEXT2="mimojo/g4ak-prod2:k8-agent-prod-2";
+      export DNS_SEARCH="qygxtgudnanefpa02glrtu1ivb.dxbx.internal.cloudapp.net";
+    elif [[ "$CI_COMMIT_REF_NAME" == "staging" ]]; then
+      export TOKEN="$acr_stage";
+      export TOKEN="$ACR_TOKEN";
+      export ACR="mimojo";
+      export USER="mimojo";
+      export ENV="stage";
+      export NAMESPACE="mojo-stg";
+      export CONTEXT="mimojo/g4ak-stg:k8s-agent";
+      export DNS_SEARCH="grbnxdxf2qcepervuv3dqexgnd.dxbx.internal.cloudapp.net";
+    else
+      export TOKEN="$ACR_TOKEN";
+      export ACR="mimojo";
+      export USER="mimojo";
+      export ENV="dev";
+      export NAMESPACE="mojo-dev";
+      export CONTEXT="mimojo/g4ak:k8-agent";
+      export DNS_SEARCH="1sujiv1zyvme1cxltv0qcynlzc.dxbx.internal.cloudapp.net";
+    fi
+
+variables:
+  K8S_STABLE_VERSION_URL: https://storage.googleapis.com/kubernetes-release/release/v1.24.3/bin/linux/amd64/kubectl
+  TAG: cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1 | tr -d '\n'
+  DEPLOYMENT_NAME: mimojo-outlet-images-app
+  IMAGE_NAME: outlet-images-app
+  ENV_SECRETS: outlet-images-app-env-file
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" 
+  GIT_DEPTH: "0" 
+
+sonarcloud-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner
+  only:
+    - dev 
+       
+pre:
+  stage: pre
+  script:
+    - echo "env variables are BRANCH=$CI_COMMIT_REF_NAME && ACR=$ACR && USER=$USER && ENV=$ENV && CONTEXT=\"$CONTEXT & $CONTEXT2\" && NAMESPACE=$NAMESPACE"
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - export DOCKER_VERSION=$(echo "$CI_PIPELINE_ID" | cut -c 1-8)
+    - docker build --build-arg NPM_TOKEN=$NPM_TOKEN -t $ACR.azurecr.io/mimojo/$IMAGE_NAME:$DOCKER_VERSION .
+
+    - cd ../../ && docker login -u $USER -p $TOKEN $ACR.azurecr.io
+    - docker push $ACR.azurecr.io/mimojo/$IMAGE_NAME:$DOCKER_VERSION
+
+
+test:
+  stage: test
+  script:
+    - exit 0
+  dependencies:
+    - build
+
+
+deploy_dev:
+  stage: deploy_dev
+  environment:
+    name: Dev
+  image: alpine
+  script:
+    - export DOCKER_VERSION=$(echo "$CI_PIPELINE_ID" | cut -c 1-8)
+    - apk add --no-cache curl
+    - curl -LO $K8S_STABLE_VERSION_URL
+    - chmod +x ./kubectl
+    - mv ./kubectl /usr/local/bin/kubectl
+    - kubectl config get-contexts
+    - kubectl config use-context $CONTEXT
+    - kubectl cluster-info
+    - sed -i "s/latest/$DOCKER_VERSION/g" manifests/*.yml
+    - sed -i "s/AZURERCONTAINERREGISTRY/$ACR/g" manifests/*.yml
+    - sed -i "s/ENVIRONMENT/$ENV/g" manifests/*.yml
+    - sed -i "s/DEPLOYMENT_NAME/$DEPLOYMENT_NAME/g" manifests/*.yml
+    - sed -i "s/IMAGE_NAME/$IMAGE_NAME/g" manifests/*.yml
+    - sed -i "s/ENV_SECRETS/$ENV_SECRETS/g" manifests/*.yml
+    - sed -i "s/NAMESPACE/$NAMESPACE/g" manifests/*.yml
+    - sed -i "s/DNS_SEARCH/$DNS_SEARCH/g" manifests/*.yml
+    - kubectl apply -f manifests/ --namespace $NAMESPACE --wait
+  dependencies:
+    - build
+  only:
+    refs:
+      - dev
+
+deploy_stage:
+  stage: deploy_stage
+  environment:
+    name: Stg
+  image: alpine
+  script:
+    - export DOCKER_VERSION=$(echo "$CI_PIPELINE_ID" | cut -c 1-8)
+    - apk add --no-cache curl
+    - curl -LO $K8S_STABLE_VERSION_URL
+    - chmod +x ./kubectl
+    - mv ./kubectl /usr/local/bin/kubectl
+    - kubectl config use-context $CONTEXT
+    - kubectl cluster-info
+    - sed -i "s/latest/$DOCKER_VERSION/g" manifests/*.yml
+    - sed -i "s/AZURERCONTAINERREGISTRY/$ACR/g" manifests/*.yml
+    - sed -i "s/ENVIRONMENT/$ENV/g" manifests/*.yml
+    - sed -i "s/DEPLOYMENT_NAME/$DEPLOYMENT_NAME/g" manifests/*.yml
+    - sed -i "s/IMAGE_NAME/$IMAGE_NAME/g" manifests/*.yml
+    - sed -i "s/ENV_SECRETS/$ENV_SECRETS/g" manifests/*.yml
+    - sed -i "s/NAMESPACE/$NAMESPACE/g" manifests/*.yml
+    - sed -i "s/DNS_SEARCH/$DNS_SEARCH/g" manifests/*.yml
+    - kubectl apply -f manifests/ --namespace $NAMESPACE --wait
+  dependencies:
+    - build
+  only:
+    refs:
+      - staging
+
+deploy_prod:
+  stage: deploy_prod
+
+  environment:
+    name: Prod
+  image: alpine
+  script:
+    - export DOCKER_VERSION=$(echo "$CI_PIPELINE_ID" | cut -c 1-8)
+    - apk add --no-cache curl
+    - curl -LO $K8S_STABLE_VERSION_URL
+    - chmod +x ./kubectl
+    - mv ./kubectl /usr/local/bin/kubectl
+    - kubectl config get-contexts
+    - kubectl config use-context $CONTEXT
+    - kubectl cluster-info
+    - sed -i "s/latest/$DOCKER_VERSION/g" manifests/*.yml
+    - sed -i "s/AZURERCONTAINERREGISTRY/$ACR/g" manifests/*.yml
+    - sed -i "s/ENVIRONMENT/$ENV/g" manifests/*.yml
+    - sed -i "s/DEPLOYMENT_NAME/$DEPLOYMENT_NAME/g" manifests/*.yml
+    - sed -i "s/IMAGE_NAME/$IMAGE_NAME/g" manifests/*.yml
+    - sed -i "s/ENV_SECRETS/$ENV_SECRETS/g" manifests/*.yml
+    - sed -i "s/NAMESPACE/$NAMESPACE/g" manifests/*.yml
+    - sed -i "s/DNS_SEARCH/$DNS_SEARCH/g" manifests/*.yml
+    - kubectl apply -f manifests/ --namespace $NAMESPACE --wait
+  dependencies:
+    - build
+  only:
+    refs:
+      - main
+      - /^release\//
+
+
+# deploy_prod_2:
+#   stage: deploy_prod
+
+#   environment:
+#     name: Prod
+#   image: alpine
+#   script:
+#     - export DOCKER_VERSION=$(echo "$CI_PIPELINE_ID" | cut -c 1-8)
+#     - apk add --no-cache curl
+#     - curl -LO $K8S_STABLE_VERSION_URL
+#     - chmod +x ./kubectl
+#     - mv ./kubectl /usr/local/bin/kubectl
+#     - kubectl config get-contexts
+#     - kubectl config use-context $CONTEXT2
+#     - kubectl cluster-info
+#     - sed -i "s/latest/$DOCKER_VERSION/g" manifests/*.yml
+#     - sed -i "s/AZURERCONTAINERREGISTRY/$ACR/g" manifests/*.yml
+#     - sed -i "s/ENVIRONMENT/$ENV/g" manifests/*.yml
+#     - sed -i "s/DEPLOYMENT_NAME/$DEPLOYMENT_NAME/g" manifests/*.yml
+#     - sed -i "s/IMAGE_NAME/$IMAGE_NAME/g" manifests/*.yml
+#     - sed -i "s/ENV_SECRETS/$ENV_SECRETS/g" manifests/*.yml
+#     - kubectl apply -f manifests/ --namespace $NAMESPACE --wait
+#   dependencies:
+#     - build
+#   only:
+#     refs:
+#       - main
+#       - /^release\//
