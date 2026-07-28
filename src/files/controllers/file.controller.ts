@@ -1,4 +1,4 @@
-import { Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors, StreamableFile } from '@nestjs/common';
+import { Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors, StreamableFile, Body, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesAzureService } from '../services/file.service';
 import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
@@ -72,12 +72,15 @@ export class FileController {
         .addMaxSizeValidator({ maxSize: 10485760 })
         .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY })
     )
-    file: Express.Multer.File
+    file: Express.Multer.File,
+    @Body('context') context?: string,
+    @Res() res?: any
   ) {
-    const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer);
-    return new StreamableFile(optimizedBuffer, {
-      type: 'image/jpeg',
-      disposition: 'attachment; filename="optimized-image.jpg"',
+    const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer, context);
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Content-Disposition': 'attachment; filename="optimized-image.jpg"',
     });
+    return res.send(optimizedBuffer);
   }
 }

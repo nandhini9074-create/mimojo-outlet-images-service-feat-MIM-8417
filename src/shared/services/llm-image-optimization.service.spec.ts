@@ -69,7 +69,7 @@ describe('LlmImageOptimizationService', () => {
   describe('process', () => {
     const mockBuffer = Buffer.from('test-image');
 
-    it('should successfully process image and return cropped buffer', async () => {
+    it('should successfully process image and return cropped buffer with context', async () => {
       mockFindOne.mockResolvedValue({ promptText: 'test prompt' });
       
       mockGenerateContent.mockResolvedValue({
@@ -81,8 +81,9 @@ describe('LlmImageOptimizationService', () => {
       mockMetadata.mockResolvedValue({ width: 500, height: 500 });
       mockToBuffer.mockResolvedValue(Buffer.from('cropped-image'));
 
-      const result = await service.process(mockBuffer);
+      const result = await service.process(mockBuffer, 'merchant-profile');
 
+      expect(mockFindOne).toHaveBeenCalledWith({ where: { context: 'merchant-profile' } });
       expect(result).toEqual(Buffer.from('cropped-image'));
       expect(mockExtract).toHaveBeenCalledWith({
         left: 10,
@@ -92,10 +93,20 @@ describe('LlmImageOptimizationService', () => {
       });
     });
 
-    it('should throw error if config not found', async () => {
+    it('should fallback to default context if not provided', async () => {
+      mockFindOne.mockResolvedValue({ promptText: 'test prompt' });
+      mockGenerateContent.mockResolvedValue({ response: { text: () => '{"left": 10, "top": 10, "width": 100, "height": 100}' } });
+      mockMetadata.mockResolvedValue({ width: 500, height: 500 });
+      mockToBuffer.mockResolvedValue(Buffer.from('cropped-image'));
+
+      await service.process(mockBuffer);
+      expect(mockFindOne).toHaveBeenCalledWith({ where: { context: 'default' } });
+    });
+
+    it('should throw error if config not found for context', async () => {
       mockFindOne.mockResolvedValue(null);
 
-      await expect(service.process(mockBuffer)).rejects.toThrow('No LLM prompt config found in DB.');
+      await expect(service.process(mockBuffer, 'merchant-profile')).rejects.toThrow('No LLM prompt config found in DB for context: merchant-profile');
     });
 
     it('should throw error if LLM returns invalid JSON', async () => {

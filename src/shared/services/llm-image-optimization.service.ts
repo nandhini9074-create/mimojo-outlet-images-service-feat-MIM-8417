@@ -25,10 +25,11 @@ export class LlmImageOptimizationService {
 
   public async process(buffer: Buffer, context?: string): Promise<Buffer> {
     try {
-      // 1. Fetch prompt from DB
-      const config = await this.llmPromptConfigModel.findOne();
+      // 1. Fetch prompt from DB based on context
+      const targetContext = context || 'default';
+      const config = await this.llmPromptConfigModel.findOne({ where: { context: targetContext } });
       if (!config) {
-        throw new Error('No LLM prompt config found in DB.');
+        throw new Error(`No LLM prompt config found in DB for context: ${targetContext}`);
       }
 
       if (!this.ai) {
@@ -42,7 +43,7 @@ export class LlmImageOptimizationService {
       const base64Data = buffer.toString('base64');
 
       // 3. Call Gemini Vision
-      const model = this.ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.ai.getGenerativeModel({ model: 'gemini-flash-latest' });
       const response = await model.generateContent([
         prompt,
         {
