@@ -1,11 +1,15 @@
-import { Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors, StreamableFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesAzureService } from '../services/file.service';
 import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { LlmImageOptimizationService } from '../../shared/services/llm-image-optimization.service';
 
 @Controller('files')
 export class FileController {
-  constructor(private readonly fileService: FilesAzureService) {}
+  constructor(
+    private readonly fileService: FilesAzureService,
+    private readonly llmImageOptimizationService: LlmImageOptimizationService
+  ) {}
 
   @Post('upload-image')
   @ApiConsumes('multipart/form-data')
@@ -42,5 +46,38 @@ export class FileController {
   ) {
     const upload = await this.fileService.uploadFile(file);
     return { url: upload };
+  }
+
+  @Post('optimize-image-buffer')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiOperation({ summary: 'Upload an image and get back an optimized buffer (No CDN upload)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file (jpg, jpeg, png)',
+        },
+      },
+      required: ['image'],
+    },
+  })
+  async optimizeBuffer(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png)$/ })
+        .addMaxSizeValidator({ maxSize: 10485760 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY })
+    )
+    file: Express.Multer.File
+  ) {
+    const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer);
+    return new StreamableFile(optimizedBuffer, {
+      type: 'image/jpeg',
+      disposition: 'attachment; filename="optimized-image.jpg"',
+    });
   }
 }

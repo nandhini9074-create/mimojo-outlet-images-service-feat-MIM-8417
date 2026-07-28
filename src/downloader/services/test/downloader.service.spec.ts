@@ -22,6 +22,8 @@ import { UpdateMerchantHeroImageDto } from 'src/downloader/dtos/merchant-photo-d
 import { CdnUploadService } from 'src/shared/services/cdn-upload.service';
 import { DataOperationsProducer } from 'src/kafka-service/data-operations.producer';
 import { EnvKeysEnum } from 'config/env.enum';
+import { MerchantProfileMetadataService } from '../merchant-profile-metadata.service';
+import { LlmImageOptimizationService } from 'src/shared/services/llm-image-optimization.service';
 
 // Mock dependencies
 jest.mock('axios');
@@ -166,6 +168,16 @@ describe('DownloaderService', () => {
           provide: DataOperationsProducer,
           useValue: mockDataOperationsProducer,
         },
+        {
+          provide: MerchantProfileMetadataService,
+          useValue: {},
+        },
+        {
+          provide: LlmImageOptimizationService,
+          useValue: {
+            process: jest.fn().mockImplementation((buf) => Promise.resolve(buf)),
+          },
+        },
       ],
     }).compile();
 
@@ -259,6 +271,9 @@ describe('DownloaderService', () => {
       mockedAxios.head.mockResolvedValue({
         headers: { location: 'https://maps.googleapis.com/actual-image.jpg' },
       } as any);
+      mockedAxios.get.mockResolvedValue({
+        data: Buffer.from('mock-image-data'),
+      } as any);
       mockCdnUploadService.uploadToCdn.mockResolvedValue(
         JSON.stringify({ result: { variants: ['https://cdn.com/poi-image.jpg'] } })
       );
@@ -268,7 +283,8 @@ describe('DownloaderService', () => {
       await flushPromises();
 
       expect(mockedAxios.head).toHaveBeenCalled();
-      expect(mockBlobClient.syncUploadFromURL).toHaveBeenCalledWith('https://maps.googleapis.com/actual-image.jpg');
+      expect(mockedAxios.get).toHaveBeenCalledWith('https://maps.googleapis.com/actual-image.jpg', { responseType: 'arraybuffer' });
+      expect(mockBlobClient.uploadData).toHaveBeenCalledWith(Buffer.from('mock-image-data'));
       expect(mockOutletPhotoService.insert).toHaveBeenCalledWith('outlet-123', 'https://cdn.com/poi-image.jpg', false);
       expect(mockBlobClient.deleteIfExists).toHaveBeenCalled();
     });

@@ -15,9 +15,4 @@ export class LlmPromptConfig extends Model<
   @Column({ type: DataType.TEXT, allowNull: false })
   declare promptText: string;
 
-  @Column({ type: DataType.INTEGER, allowNull: false })
-  declare targetWidth: number;
-
-  @Column({ type: DataType.INTEGER, allowNull: false })
-  declare targetHeight: number;
 }

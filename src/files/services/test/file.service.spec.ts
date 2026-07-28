@@ -44,6 +44,10 @@ describe('FilesAzureService', () => {
       uploadToCdn: jest.fn().mockResolvedValue(JSON.stringify({ result: { variants: [mockCdnUrl] } })),
     };
 
+    const mockLlmImageOptimizationService = {
+      process: jest.fn().mockImplementation((buf) => Promise.resolve(buf)),
+    };
+
     mockLogger = {
       info: jest.fn(),
       error: jest.fn(),
@@ -52,7 +56,8 @@ describe('FilesAzureService', () => {
     service = new FilesAzureService(
       mockConfigService as ConfigService,
       mockCdnUploadService as unknown as CdnUploadService,
-      mockLogger as any
+      mockLogger as any,
+      mockLlmImageOptimizationService as any
     );
   });
 
