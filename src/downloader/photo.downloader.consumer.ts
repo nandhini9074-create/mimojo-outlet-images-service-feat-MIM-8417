@@ -16,8 +16,8 @@ export class PhotoDownloaderConsumer implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.consumerService.consume(
-      { topics: [this.config.KAFKA_TOPIC], fromBeginning: this.config.KAFKA_FROM_BEGINING },
+    /*await this.consumerService.consume(
+     { topics: [this.config.KAFKA_TOPIC], fromBeginning: this.config.KAFKA_FROM_BEGINING },
       {
         autoCommit: this.config.KAFKA_AUTO_COMMIT,
         eachMessage: async ({ topic, partition, message, heartbeat, pause }) => {
@@ -28,6 +28,6 @@ export class PhotoDownloaderConsumer implements OnModuleInit {
           );
         },
       }
-    );
+    );*/
   }
 }

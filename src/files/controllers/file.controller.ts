@@ -9,7 +9,7 @@ export class FileController {
   constructor(
     private readonly fileService: FilesAzureService,
     private readonly llmImageOptimizationService: LlmImageOptimizationService
-  ) {}
+  ) { }
 
   @Post('upload-image')
   @ApiConsumes('multipart/form-data')
@@ -42,9 +42,10 @@ export class FileController {
           errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
         })
     )
-    file: Express.Multer.File
+    file: Express.Multer.File,
+    @Body('profileId') profileId?: string
   ) {
-    const upload = await this.fileService.uploadFile(file);
+    const upload = await this.fileService.uploadFile(file, profileId);
     return { url: upload };
   }
 
@@ -73,10 +74,10 @@ export class FileController {
         .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY })
     )
     file: Express.Multer.File,
-    @Body('context') context?: string,
+    @Body('profileId') profileId?: string,
     @Res() res?: any
   ) {
-    const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer, context);
+    const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer, profileId);
     res.set({
       'Content-Type': 'image/jpeg',
       'Content-Disposition': 'attachment; filename="optimized-image.jpg"',

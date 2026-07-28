@@ -1,4 +1,4 @@
-import './tracer';
+// import './tracer'; // REQUIRED FOR LOCAL TESTING
 import { VersioningType } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { appConfig } from 'config/server.config';

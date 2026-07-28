@@ -16,5 +16,5 @@ export class LlmPromptConfig extends Model<
   declare promptText: string;
 
   @Column({ type: DataType.STRING, allowNull: false, unique: true, defaultValue: 'default' })
-  declare context: string;
+  declare profile_id: string;
 }

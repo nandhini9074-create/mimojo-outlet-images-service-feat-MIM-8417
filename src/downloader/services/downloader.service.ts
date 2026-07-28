@@ -154,7 +154,10 @@ export class DownloaderService {
         await this.merchantProfilePhotoService.deselectDefaultImage(dto.merchantProfileId);
       }
       
-      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'merchant-profile');
+      const profile = await this.merchantProfileModel.findOne({ where: { id: dto.merchantProfileId } });
+      const llmProfileId = profile ? profile.name : 'default';
+
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, llmProfileId);
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {
@@ -184,7 +187,10 @@ export class DownloaderService {
         await this.merchantPhotoService.deselectDefaultImage(dto.merchantId);
       }
       
-      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'merchant-image');
+      const profile = await this.merchantProfileModel.findOne({ where: { merchantId: dto.merchantId } });
+      const llmProfileId = profile ? profile.name : 'default';
+
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, llmProfileId);
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {

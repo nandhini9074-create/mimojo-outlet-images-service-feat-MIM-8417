@@ -43,7 +43,7 @@ export class FilesAzureService {
     return blockBlobClient;
   }
 
-  public async uploadFile(file: Express.Multer.File) {
+  public async uploadFile(file: Express.Multer.File, profileId?: string) {
     const methodName = 'uploadFile';
     this.logger.info(`${this.serviceName} - ${methodName} called`, {
       fileName: file.originalname,
@@ -53,7 +53,7 @@ export class FilesAzureService {
       const extension = file.originalname.split('.').pop();
       const file_name = randomUUID() + '.' + extension;
 
-      file.buffer = await this.llmImageOptimizationService.process(file.buffer);
+      file.buffer = await this.llmImageOptimizationService.process(file.buffer, profileId);
 
       const blockBlobClient = await this.getBlobClient(file_name);
       await blockBlobClient.uploadData(file.buffer);

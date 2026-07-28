@@ -23,13 +23,13 @@ export class LlmImageOptimizationService {
     }
   }
 
-  public async process(buffer: Buffer, context?: string): Promise<Buffer> {
+  public async process(buffer: Buffer, profileId?: string): Promise<Buffer> {
     try {
-      // 1. Fetch prompt from DB based on context
-      const targetContext = context || 'default';
-      const config = await this.llmPromptConfigModel.findOne({ where: { context: targetContext } });
+      // 1. Fetch prompt from DB based on profileId
+      const targetProfileId = profileId || 'default';
+      const config = await this.llmPromptConfigModel.findOne({ where: { profile_id: targetProfileId } });
       if (!config) {
-        throw new Error(`No LLM prompt config found in DB for context: ${targetContext}`);
+        throw new Error(`No LLM prompt config found in DB for profileId: ${targetProfileId}`);
       }
 
       if (!this.ai) {
