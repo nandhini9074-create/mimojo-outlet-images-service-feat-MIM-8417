@@ -75,13 +75,13 @@ export class FileController {
     )
     file: Express.Multer.File,
     @Body('profileId') profileId?: string,
-    @Res() res?: any
+    @Res({ passthrough: true }) res?: any
   ) {
     const optimizedBuffer = await this.llmImageOptimizationService.process(file.buffer, profileId);
     res.set({
       'Content-Type': 'image/jpeg',
       'Content-Disposition': 'attachment; filename="optimized-image.jpg"',
     });
-    return res.send(optimizedBuffer);
+    return new StreamableFile(optimizedBuffer);
   }
 }

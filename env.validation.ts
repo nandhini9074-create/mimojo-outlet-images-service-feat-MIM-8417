@@ -159,6 +159,10 @@ export class EnvironmentVariables implements IAppConfig, ICredentialsConfig, IDa
   @IsNotEmpty()
   @IsString()
   GEMINI_API_KEY: string;
+
+  @IsNotEmpty()
+  @IsString()
+  LLM_MASTER_PROFILE_ID: string;
 }
 
 export function validate(config: Record<string, unknown>) {

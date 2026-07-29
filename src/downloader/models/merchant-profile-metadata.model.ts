@@ -80,10 +80,10 @@ export class MerchantProfileMetadata extends Model<
     allowNull: true,
   })
   declare descAr: string;
-  @Column({
-    type: DataType.UUID,
-  })
-  declare updatedBy: string;
+  // @Column({
+  //   type: DataType.UUID,
+  // })
+  // declare updatedBy: string;
 
   @BelongsTo(() => Merchant)
   declare merchant: Merchant;

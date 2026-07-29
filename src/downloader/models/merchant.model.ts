@@ -214,10 +214,10 @@ export class Merchant extends Model<InferAttributes<Merchant>, InferCreationAttr
   @HasMany(() => MerchantPhoto)
   declare merchantPhotos: MerchantPhoto[];
 
-  @Column({
-    type: DataType.UUID,
-  })
-  declare updatedBy: string;
+  // @Column({
+  //   type: DataType.UUID,
+  // })
+  // declare updatedBy: string;
 
   @Column({
     type: DataType.BOOLEAN,

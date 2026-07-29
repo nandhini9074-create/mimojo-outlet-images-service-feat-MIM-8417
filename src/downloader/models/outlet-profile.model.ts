@@ -86,9 +86,9 @@ export class OutletProfileMetadata extends Model<InferAttributes<OutletProfileMe
   })
   declare maxOffer: number;
 
-  @Column({
-    type: DataType.UUID,
-    allowNull: true,
-  })
-  declare updatedBy: string;
+  // @Column({
+  //   type: DataType.UUID,
+  //   allowNull: true,
+  // })
+  // declare updatedBy: string;
 }

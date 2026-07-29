@@ -99,5 +99,6 @@ export const llmConfig = registerAs(
   'llm',
   (): ILLMConfig => ({
     GEMINI_API_KEY: process.env[EnvKeysEnum.GEMINI_API_KEY] as string,
+    LLM_MASTER_PROFILE_ID: process.env[EnvKeysEnum.LLM_MASTER_PROFILE_ID] as string,
   })
 );

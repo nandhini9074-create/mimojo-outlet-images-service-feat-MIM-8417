@@ -94,7 +94,12 @@ export class DownloaderService {
         let imageBuffer = Buffer.from(imageResponse.data);
 
         // 2. Call your LLM photo resize function here
-        imageBuffer = await this.llmImageOptimizationService.process(imageBuffer, 'google-poi');
+        let llmProfileId = this.configService.get<string>('llm.LLM_MASTER_PROFILE_ID');
+        if (key) {
+          const profile = await this.outletProfileModel.findOne({ where: { outletId: key } });
+          if (profile) llmProfileId = profile.profileId;
+        }
+        imageBuffer = await this.llmImageOptimizationService.process(imageBuffer, llmProfileId);
 
         // 3. Upload the resized buffer to Blob Storage
         const blobClient = this.getBlobClient(fileName);
@@ -154,8 +159,11 @@ export class DownloaderService {
         await this.merchantProfilePhotoService.deselectDefaultImage(dto.merchantProfileId);
       }
       
-      const profile = await this.merchantProfileModel.findOne({ where: { id: dto.merchantProfileId } });
-      const llmProfileId = profile ? profile.name : 'default';
+      let llmProfileId = this.configService.get<string>('llm.LLM_MASTER_PROFILE_ID');
+      if (dto?.merchantProfileId) {
+        const profile = await this.merchantProfileModel.findOne({ where: { id: dto.merchantProfileId } });
+        if (profile) llmProfileId = profile.profileId;
+      }
 
       image.buffer = await this.llmImageOptimizationService.process(image.buffer, llmProfileId);
       const fileName = await this.uploadImageToBlob(image);
@@ -187,8 +195,11 @@ export class DownloaderService {
         await this.merchantPhotoService.deselectDefaultImage(dto.merchantId);
       }
       
-      const profile = await this.merchantProfileModel.findOne({ where: { merchantId: dto.merchantId } });
-      const llmProfileId = profile ? profile.name : 'default';
+      let llmProfileId = this.configService.get<string>('llm.LLM_MASTER_PROFILE_ID');
+      if (dto?.merchantId) {
+        const profile = await this.merchantProfileModel.findOne({ where: { merchantId: dto.merchantId } });
+        if (profile) llmProfileId = profile.profileId;
+      }
 
       image.buffer = await this.llmImageOptimizationService.process(image.buffer, llmProfileId);
       const fileName = await this.uploadImageToBlob(image);
@@ -218,7 +229,13 @@ export class DownloaderService {
         await this.outletProfilePhotoService.deselectDefaultImage(dto.outletProfileId);
       }
       
-      image.buffer = await this.llmImageOptimizationService.process(image.buffer, 'outlet-profile');
+      let llmProfileId = this.configService.get<string>('llm.LLM_MASTER_PROFILE_ID');
+      if (dto?.outletProfileId) {
+        const profile = await this.outletProfileModel.findOne({ where: { id: dto.outletProfileId } });
+        if (profile) llmProfileId = profile.profileId;
+      }
+
+      image.buffer = await this.llmImageOptimizationService.process(image.buffer, llmProfileId);
       const fileName = await this.uploadImageToBlob(image);
       const validRegex = /^[.0-9a-zA-Z-_]+$/;
       if (!fileName || !validRegex.test(fileName)) {

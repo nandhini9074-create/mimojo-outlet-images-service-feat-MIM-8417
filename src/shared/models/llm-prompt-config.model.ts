@@ -15,6 +15,6 @@ export class LlmPromptConfig extends Model<
   @Column({ type: DataType.TEXT, allowNull: false })
   declare promptText: string;
 
-  @Column({ type: DataType.STRING, allowNull: false, unique: true, defaultValue: 'default' })
-  declare profile_id: string;
+  @Column({ type: DataType.STRING, allowNull: false, unique: true, defaultValue: 'default', field: 'profile_id' })
+  declare profileId: string;
 }

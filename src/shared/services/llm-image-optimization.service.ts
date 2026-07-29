@@ -26,8 +26,9 @@ export class LlmImageOptimizationService {
   public async process(buffer: Buffer, profileId?: string): Promise<Buffer> {
     try {
       // 1. Fetch prompt from DB based on profileId
-      const targetProfileId = profileId || 'default';
-      const config = await this.llmPromptConfigModel.findOne({ where: { profile_id: targetProfileId } });
+      const masterProfileId = this.configService.get<string>('llm.LLM_MASTER_PROFILE_ID');
+      const targetProfileId = profileId || masterProfileId;
+      const config = await this.llmPromptConfigModel.findOne({ where: { profileId: targetProfileId } });
       if (!config) {
         throw new Error(`No LLM prompt config found in DB for profileId: ${targetProfileId}`);
       }
@@ -76,6 +77,7 @@ export class LlmImageOptimizationService {
 
         return await sharp(buffer)
           .extract({ left: Math.floor(safeLeft), top: Math.floor(safeTop), width: Math.floor(safeWidth), height: Math.floor(safeHeight) })
+          .resize({ width: cropCoords.width, height: cropCoords.height, fit: 'cover' })
           .toBuffer();
       }
 

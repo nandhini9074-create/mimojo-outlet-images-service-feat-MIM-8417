@@ -63,4 +63,5 @@ export interface IGrafanaConfig {
 
 export interface ILLMConfig {
   GEMINI_API_KEY: string;
+  LLM_MASTER_PROFILE_ID: string;
 }
