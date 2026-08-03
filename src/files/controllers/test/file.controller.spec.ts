@@ -2,13 +2,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import { FilesAzureService } from 'src/files/services/file.service';
 import { FileController } from '../file.controller';
+import { LlmImageOptimizationService } from 'src/shared/services/llm-image-optimization.service';
 
 describe('FileController', () => {
     let controller: FileController;
     let fileService: FilesAzureService;
+    let llmImageOptimizationService: LlmImageOptimizationService;
 
     const mockFilesAzureService = {
         uploadFile: jest.fn(),
+    };
+
+    const mockLlmImageOptimizationService = {
+        process: jest.fn(),
     };
 
     beforeEach(async () => {
@@ -19,11 +25,16 @@ describe('FileController', () => {
                     provide: FilesAzureService,
                     useValue: mockFilesAzureService,
                 },
+                {
+                    provide: LlmImageOptimizationService,
+                    useValue: mockLlmImageOptimizationService,
+                },
             ],
         }).compile();
 
         controller = module.get<FileController>(FileController);
         fileService = module.get<FilesAzureService>(FilesAzureService);
+        llmImageOptimizationService = module.get<LlmImageOptimizationService>(LlmImageOptimizationService);
     });
 
     afterEach(() => {
@@ -43,7 +54,7 @@ describe('FileController', () => {
 
         const result = await controller.create(mockFile);
 
-        expect(fileService.uploadFile).toHaveBeenCalledWith(mockFile);
+        expect(fileService.uploadFile).toHaveBeenCalledWith(mockFile, undefined);
         expect(result).toEqual({ url: mockUrl });
     });
 
@@ -64,5 +75,33 @@ describe('FileController', () => {
         } catch (err) {
             expect(err.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
         }
+    });
+
+    describe('optimizeBuffer', () => {
+        it('should optimize image buffer and return StreamableFile', async () => {
+            const mockFile = {
+                originalname: 'test-image.jpg',
+                mimetype: 'image/jpeg',
+                size: 500000,
+                buffer: Buffer.from('mock buffer'),
+            } as Express.Multer.File;
+
+            const mockOptimizedBuffer = Buffer.from('optimized buffer');
+            mockLlmImageOptimizationService.process.mockResolvedValue(mockOptimizedBuffer);
+
+            const mockRes = {
+                set: jest.fn(),
+            };
+
+            const result = await controller.optimizeBuffer(mockFile, 'test-profile-id', mockRes);
+
+            expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(mockFile.buffer, 'test-profile-id');
+            expect(mockRes.set).toHaveBeenCalledWith({
+                'Content-Type': 'image/jpeg',
+                'Content-Disposition': 'attachment; filename="optimized-image.jpg"',
+            });
+            expect(result).toBeDefined();
+            expect(result.getStream).toBeDefined();
+        });
     });
 });

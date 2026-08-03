@@ -18,7 +18,8 @@ jest.mock('@google/generative-ai', () => {
 });
 
 const mockToBuffer = jest.fn();
-const mockExtract = jest.fn().mockReturnValue({ toBuffer: mockToBuffer });
+const mockResize = jest.fn().mockReturnValue({ toBuffer: mockToBuffer });
+const mockExtract = jest.fn().mockReturnValue({ resize: mockResize });
 const mockMetadata = jest.fn();
 jest.mock('sharp', () => {
   return jest.fn().mockImplementation(() => ({
@@ -41,7 +42,11 @@ describe('LlmImageOptimizationService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn().mockReturnValue('test-api-key'),
+            get: jest.fn((key: string) => {
+              if (key === 'llm.GEMINI_API_KEY') return 'test-api-key';
+              if (key === 'llm.LLM_MASTER_PROFILE_ID') return 'default';
+              return null;
+            }),
           },
         },
         {
@@ -83,7 +88,7 @@ describe('LlmImageOptimizationService', () => {
 
       const result = await service.process(mockBuffer, 'merchant-profile');
 
-      expect(mockFindOne).toHaveBeenCalledWith({ where: { context: 'merchant-profile' } });
+      expect(mockFindOne).toHaveBeenCalledWith({ where: { profileId: 'merchant-profile' } });
       expect(result).toEqual(Buffer.from('cropped-image'));
       expect(mockExtract).toHaveBeenCalledWith({
         left: 10,
@@ -100,13 +105,13 @@ describe('LlmImageOptimizationService', () => {
       mockToBuffer.mockResolvedValue(Buffer.from('cropped-image'));
 
       await service.process(mockBuffer);
-      expect(mockFindOne).toHaveBeenCalledWith({ where: { context: 'default' } });
+      expect(mockFindOne).toHaveBeenCalledWith({ where: { profileId: 'default' } });
     });
 
     it('should throw error if config not found for context', async () => {
       mockFindOne.mockResolvedValue(null);
 
-      await expect(service.process(mockBuffer, 'merchant-profile')).rejects.toThrow('No LLM prompt config found in DB for context: merchant-profile');
+      await expect(service.process(mockBuffer, 'merchant-profile')).rejects.toThrow('No LLM prompt config found in DB for profileId: merchant-profile');
     });
 
     it('should throw error if LLM returns invalid JSON', async () => {

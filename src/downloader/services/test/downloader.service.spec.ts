@@ -46,6 +46,9 @@ describe('DownloaderService', () => {
   let mockDataOperationsProducer: jest.Mocked<DataOperationsProducer>;
   let mockLogger: any;
   let mockBlobClient: any;
+  let mockLlmImageOptimizationService: jest.Mocked<LlmImageOptimizationService>;
+  let mockMerchantProfileModel: any;
+  let mockOutletProfileModel: any;
 
   const mockConfigs = {
     google: { GOOGLE_KEY: 'test-google-key' },
@@ -59,6 +62,7 @@ describe('DownloaderService', () => {
       CDN_LINK: 'https://test-cdn.com',
       CDN_AUTHORIZATION: 'Bearer test-token',
     },
+    'llm.LLM_MASTER_PROFILE_ID': 'default-master-profile',
   };
 
   beforeEach(async () => {
@@ -85,11 +89,13 @@ describe('DownloaderService', () => {
       getContainerClient: jest.fn().mockReturnValue(mockContainerClient),
     };
 
-    const mockMerchantProfileModel = {
+    mockMerchantProfileModel = {
       count: jest.fn().mockResolvedValue(1),
+      findOne: jest.fn().mockResolvedValue({ profileId: 'merchant-profile-llm-id' }),
     };
-    const mockOutletProfileModel = {
+    mockOutletProfileModel = {
       count: jest.fn().mockResolvedValue(1),
+      findOne: jest.fn().mockResolvedValue({ profileId: 'outlet-profile-llm-id' }),
     };
 
     const BlobServiceClient = require('@azure/storage-blob').BlobServiceClient;
@@ -189,6 +195,7 @@ describe('DownloaderService', () => {
     mockOutletProfileMetadataService = module.get(OutletProfileMetadataService);
     mockConfigService = module.get(ConfigService);
     mockLogger = module.get(CustomPinoLogger);
+    mockLlmImageOptimizationService = module.get(LlmImageOptimizationService);
   });
 
   afterEach(() => {
@@ -267,7 +274,7 @@ describe('DownloaderService', () => {
       await new Promise(process.nextTick);
     };
 
-    it('should fetch/upload poi image and cleanup blob', async () => {
+    it('should fetch/upload poi image, optimize with LLM using profileId, and cleanup blob', async () => {
       mockedAxios.head.mockResolvedValue({
         headers: { location: 'https://maps.googleapis.com/actual-image.jpg' },
       } as any);
@@ -284,9 +291,31 @@ describe('DownloaderService', () => {
 
       expect(mockedAxios.head).toHaveBeenCalled();
       expect(mockedAxios.get).toHaveBeenCalledWith('https://maps.googleapis.com/actual-image.jpg', { responseType: 'arraybuffer' });
+      expect(mockOutletProfileModel.findOne).toHaveBeenCalledWith({ where: { outletId: 'outlet-123' } });
+      expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(Buffer.from('mock-image-data'), 'outlet-profile-llm-id');
       expect(mockBlobClient.uploadData).toHaveBeenCalledWith(Buffer.from('mock-image-data'));
       expect(mockOutletPhotoService.insert).toHaveBeenCalledWith('outlet-123', 'https://cdn.com/poi-image.jpg', false);
       expect(mockBlobClient.deleteIfExists).toHaveBeenCalled();
+    });
+
+    it('should fallback to default master profile ID if no outlet profile metadata is found', async () => {
+      mockedAxios.head.mockResolvedValue({
+        headers: { location: 'https://maps.googleapis.com/actual-image.jpg' },
+      } as any);
+      mockedAxios.get.mockResolvedValue({
+        data: Buffer.from('mock-image-data'),
+      } as any);
+      mockCdnUploadService.uploadToCdn.mockResolvedValue(
+        JSON.stringify({ result: { variants: ['https://cdn.com/poi-image.jpg'] } })
+      );
+      mockOutletPhotoService.insert.mockResolvedValue({ id: 'poi-photo-1' });
+      mockOutletProfileModel.findOne.mockResolvedValueOnce(null);
+
+      await service.uploadPoiImages('outlet-123', ['poi-photo-ref']);
+      await flushPromises();
+
+      expect(mockOutletProfileModel.findOne).toHaveBeenCalledWith({ where: { outletId: 'outlet-123' } });
+      expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(Buffer.from('mock-image-data'), 'default-master-profile');
     });
 
     it('should log error when poi upload fails', async () => {
@@ -315,7 +344,7 @@ describe('DownloaderService', () => {
       path: '',
     };
 
-    it('should upload merchant profile image successfully', async () => {
+    it('should upload merchant profile image successfully with LLM optimization', async () => {
       const dto: UploadMerchantProfileImageDto = {
         merchantProfileId: 'merchant-profile-123',
         setAsHeroImage: true,
@@ -332,6 +361,8 @@ describe('DownloaderService', () => {
 
       expect(result).toEqual({ id: 'photo-123' });
       expect(mockMerchantProfilePhotoService.deselectDefaultImage).toHaveBeenCalledWith(dto.merchantProfileId);
+      expect(mockMerchantProfileModel.findOne).toHaveBeenCalledWith({ where: { id: dto.merchantProfileId } });
+      expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(mockFile.buffer, 'merchant-profile-llm-id');
       expect(mockBlobClient.uploadData).toHaveBeenCalledWith(mockFile.buffer);
     });
 
@@ -418,7 +449,7 @@ describe('DownloaderService', () => {
       path: '',
     };
 
-    it('should upload merchant image successfully', async () => {
+    it('should upload merchant image successfully with LLM optimization', async () => {
       const dto: UploadMerchantImageDto = {
         merchantId: 'merchant-123',
         setAsHeroImage: true,
@@ -435,6 +466,8 @@ describe('DownloaderService', () => {
 
       expect(result).toEqual({ id: 'photo-123' });
       expect(mockMerchantPhotoService.deselectDefaultImage).toHaveBeenCalledWith(dto.merchantId);
+      expect(mockMerchantProfileModel.findOne).toHaveBeenCalledWith({ where: { merchantId: dto.merchantId } });
+      expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(mockFile.buffer, 'merchant-profile-llm-id');
     });
 
     it('should handle upload error', async () => {
@@ -499,7 +532,7 @@ describe('DownloaderService', () => {
       path: '',
     };
 
-    it('should upload outlet profile image successfully', async () => {
+    it('should upload outlet profile image successfully with LLM optimization', async () => {
       const dto: UploadOutletProfileImageDto = {
         outletProfileId: 'outlet-profile-123',
         setAsHeroImage: true,
@@ -516,6 +549,8 @@ describe('DownloaderService', () => {
 
       expect(result).toEqual({ id: 'photo-123' });
       expect(mockOutletProfilePhotoService.deselectDefaultImage).toHaveBeenCalledWith(dto.outletProfileId);
+      expect(mockOutletProfileModel.findOne).toHaveBeenCalledWith({ where: { id: dto.outletProfileId } });
+      expect(mockLlmImageOptimizationService.process).toHaveBeenCalledWith(mockFile.buffer, 'outlet-profile-llm-id');
     });
 
     it('should handle upload error', async () => {
